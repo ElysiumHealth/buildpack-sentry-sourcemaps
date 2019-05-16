@@ -50,10 +50,10 @@ for map in $(find . -name '*.js.map' -not -path './node_modules/*' -not -path '.
     
     # Check if we have a '.next' directory for Next.js
     # Need to modify $name to represent with BUILD_ID from Next.js
-    if [ -d "./.next/" ]; then
-        next_id=$(cat "./.next/BUILD_ID")
+    if [ -d "./app/interface/.next/" ]; then
+        next_id=$(cat "./app/interface/.next/BUILD_ID")
         next_path="~/_next/$next_id/"
-        name="${name/"~/.next/dist/bundles/"/$next_path}"
+        name="${name/"~/app/interface/.next/dist/bundles/"/$next_path}"
     fi
    
     res=($(${JQ} -r ". | map(select(.name == \"${name}\")) | first | .id + \" \" + (.sha1 // \"\")" "${files}"))
