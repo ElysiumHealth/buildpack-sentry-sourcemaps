@@ -46,7 +46,7 @@ cd "${build}/"
 
 proj_root=app/interface
 
-for server_js in $(find ${proj_root} -name '*.js' -not -path '*/.next/*' -not -path '*__mocks__*' -not -path '*/index.js' -not -path './node_modules/*' -not -path './.heroku/*' | cut -c 3-); do
+for server_js in $(find ${proj_root} -name '*.js' -not -path '*/.next/*' -not -path '*__mocks__*' -not -path '*/index.js' -not -path './node_modules/*' -not -path './.heroku/*'); do
     sum=$(sha1sum "./${server_js}")
     name="app:///$(basename ${server_js})"
 
@@ -79,7 +79,7 @@ for server_js in $(find ${proj_root} -name '*.js' -not -path '*/.next/*' -not -p
     fi
 done
 
-for client_js in $(find ${proj_root} -name '*.js' -not -path '*/.next/*' -not -path '*__mocks__*' -not -path '*/index.js' -not -path './node_modules/*' -not -path './.heroku/*' | cut -c 3-); do
+for client_js in $(find ${proj_root} -name '*.js' -not -path '*/.next/*' -not -path '*__mocks__*' -not -path '*/index.js' -not -path './node_modules/*' -not -path './.heroku/*'); do
     sum=$(sha1sum "./${client_js}")
     name="~/$(echo ${client_js} | sed -e 's@${proj_root}@@' -e 's@\.next@~\/_next@')"
 
