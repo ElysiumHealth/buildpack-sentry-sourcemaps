@@ -46,23 +46,22 @@ cd "${build}/"
 
 proj_root=app/interface
 
-for server_js in $(find ${proj_root} -name '*.js' -not -path '*/.next/*' -not -path '*__mocks__*' -not -path '*/index.js' -not -path './node_modules/*' -not -path './.heroku/*'); do
-    sum=$(sha1sum "./${server_js}")
-    name="app:///$(basename ${server_js})"
-
-    res=($(${JQ} -r ". | map(select(.name == \"${name}\")) | first | .id + \" \" + (.sha1 // \"\")" "${files}"))
+upload_artifact () {
+    local source_path=$1
+    local name=$2
+    local res=($(${JQ} -r ". | map(select(.name == \"${name}\")) | first | .id + \" \" + (.sha1 // \"\")" "${files}"))
 
     if [[ "${res[0]}" == "" ]]; then
-        echo "       Uploading ${server_js} to Sentry"
+        echo "       Uploading ${source_path} to Sentry"
         curl -sSf "${API}/releases/${SOURCE_VERSION}/files/" \
              -X POST \
              -H "Authorization: Bearer ${SENTRY_AUTH_TOKEN}" \
-             -F file=@"${server_js}" \
+             -F file=@"${source_path}" \
              -F name="${name}" \
              >/dev/null
 
     elif [[ "${res[1]}" != "${sum}" ]]; then
-        echo "       Updating ${server_js} on Sentry"
+        echo "       Updating ${source_path} on Sentry"
         curl -sSf "${API}/releases/${SOURCE_VERSION}/files/${res[0]}/" \
              -X DELETE \
              -H "Authorization: Bearer ${SENTRY_AUTH_TOKEN}" \
@@ -70,46 +69,27 @@ for server_js in $(find ${proj_root} -name '*.js' -not -path '*/.next/*' -not -p
         curl -sSf "${API}/releases/${SOURCE_VERSION}/files/" \
              -X POST \
              -H "Authorization: Bearer ${SENTRY_AUTH_TOKEN}" \
-             -F file=@"${server_js}" \
+             -F file=@"${source_path}" \
              -F name="${name}" \
              >/dev/null
 
     else
-        echo "       ${server_js} is up-to-date"
+        echo "       ${source_path} is up-to-date"
     fi
+}
+
+for server_js in $(find ${proj_root} -name '*.js' -not -path '*/.next/*' -not -path '*__mocks__*' -not -path '*/index.js' -not -path './node_modules/*' -not -path './.heroku/*'); do
+    sum=$(sha1sum "./${server_js}")
+    name="app:///$(basename ${server_js})"
+
+    upload_artifact "$server_js" "$name"
 done
 
 for client_js in $(find ${proj_root} -name '*.js' -not -path '*/.next/*' -not -path '*__mocks__*' -not -path '*/index.js' -not -path './node_modules/*' -not -path './.heroku/*'); do
     sum=$(sha1sum "./${client_js}")
     name="~/$(echo ${client_js} | sed -e 's@${proj_root}@@' -e 's@\.next@~\/_next@')"
 
-    res=($(${JQ} -r ". | map(select(.name == \"${name}\")) | first | .id + \" \" + (.sha1 // \"\")" "${files}"))
-
-    if [[ "${res[0]}" == "" ]]; then
-        echo "       Uploading ${client_js} to Sentry"
-        curl -sSf "${API}/releases/${SOURCE_VERSION}/files/" \
-             -X POST \
-             -H "Authorization: Bearer ${SENTRY_AUTH_TOKEN}" \
-             -F file=@"${client_js}" \
-             -F name="${name}" \
-             >/dev/null
-
-    elif [[ "${res[1]}" != "${sum}" ]]; then
-        echo "       Updating ${client_js} on Sentry"
-        curl -sSf "${API}/releases/${SOURCE_VERSION}/files/${res[0]}/" \
-             -X DELETE \
-             -H "Authorization: Bearer ${SENTRY_AUTH_TOKEN}" \
-             >/dev/null
-        curl -sSf "${API}/releases/${SOURCE_VERSION}/files/" \
-             -X POST \
-             -H "Authorization: Bearer ${SENTRY_AUTH_TOKEN}" \
-             -F file=@"${client_js}" \
-             -F name="${name}" \
-             >/dev/null
-
-    else
-        echo "       ${client_js} is up-to-date"
-    fi
+    upload_artifact "$client_js" "$name"
 done
 
 for map in $(find . -name '*.js.map' -not -path './node_modules/*' -not -path './.heroku/*' | cut -c 3-); do
@@ -121,33 +101,7 @@ for map in $(find . -name '*.js.map' -not -path './node_modules/*' -not -path '.
         name=$(echo ${map} | sed -e "s@${proj_root}@@" -e "s@\.next@~\/_next@")
     fi
 
-    res=($(${JQ} -r ". | map(select(.name == \"${name}\")) | first | .id + \" \" + (.sha1 // \"\")" "${files}"))
-
-    if [[ "${res[0]}" == "" ]]; then
-        echo "       Uploading ${map} to Sentry"
-        curl -sSf "${API}/releases/${SOURCE_VERSION}/files/" \
-             -X POST \
-             -H "Authorization: Bearer ${SENTRY_AUTH_TOKEN}" \
-             -F file=@"${map}" \
-             -F name="${name}" \
-             >/dev/null
-
-    elif [[ "${res[1]}" != "${sum}" ]]; then
-        echo "       Updating ${map} on Sentry"
-        curl -sSf "${API}/releases/${SOURCE_VERSION}/files/${res[0]}/" \
-             -X DELETE \
-             -H "Authorization: Bearer ${SENTRY_AUTH_TOKEN}" \
-             >/dev/null
-        curl -sSf "${API}/releases/${SOURCE_VERSION}/files/" \
-             -X POST \
-             -H "Authorization: Bearer ${SENTRY_AUTH_TOKEN}" \
-             -F file=@"${map}" \
-             -F name="${name}" \
-             >/dev/null
-
-    else
-        echo "       ${map} is up-to-date"
-    fi
+    upload_artifact "$map" "$name"
 done
 
 rm "${files}"
