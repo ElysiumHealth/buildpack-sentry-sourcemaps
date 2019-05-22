@@ -8,7 +8,7 @@ build=$(cd "$1/" && pwd)
 cache=$(cd "$2/" && pwd)
 env_dir=$(cd "$3/" && pwd)
 
-for key in SENTRY_AUTH_TOKEN SENTRY_ORG SENTRY_PROJECT; do
+for key in SENTRY_AUTH_TOKEN SENTRY_ORG SENTRY_PROJECT PROJ_ROOT; do
     [[ -f "${env_dir}/${key}" ]] && export "$key=$(cat "${env_dir}/${key}")"
     [[ -z "${!key}" ]] && echo "-----> ${key} is missing or empty: unable to continue." && exit 1
 done
@@ -44,8 +44,6 @@ curl -sSf "${API}/releases/${SOURCE_VERSION}/files/" \
 # Upload the sourcemaps
 cd "${build}/"
 
-proj_root=app/interface
-
 upload_artifact () {
     local source_path=$1
     local name=$2
@@ -78,16 +76,16 @@ upload_artifact () {
     fi
 }
 
-for server_js in $(find ${proj_root} -name '*.js' -not -path '*/.next/*' -not -path '*__mocks__*' -not -path '*/index.js' -not -path './node_modules/*' -not -path './.heroku/*'); do
+for server_js in $(find ${PROJ_ROOT} -name '*.js' -not -path '*/.next/*' -not -path '*__mocks__*' -not -path '*/index.js' -not -path './node_modules/*' -not -path './.heroku/*'); do
     sum=$(sha1sum "./${server_js}")
     name="app:///$(basename ${server_js})"
 
     upload_artifact "$server_js" "$name"
 done
 
-for client_js in $(find ${proj_root} -name '*.js' -not -path '*/.next/*' -not -path '*__mocks__*' -not -path '*/index.js' -not -path './node_modules/*' -not -path './.heroku/*'); do
+for client_js in $(find ${PROJ_ROOT} -name '*.js' -not -path '*/.next/*' -not -path '*__mocks__*' -not -path '*/index.js' -not -path './node_modules/*' -not -path './.heroku/*'); do
     sum=$(sha1sum "./${client_js}")
-    name="~/$(echo ${client_js} | sed -e 's@${proj_root}@@' -e 's@\.next@~\/_next@')"
+    name="~/$(echo ${client_js} | sed -e 's@${PROJ_ROOT}@@' -e 's@\.next@~\/_next@')"
 
     upload_artifact "$client_js" "$name"
 done
@@ -97,8 +95,8 @@ for map in $(find . -name '*.js.map' -not -path './node_modules/*' -not -path '.
     name="~/${map}"
 
     # Check if we have a '.next' directory for Next.js
-    if [ -d "./${proj_root}/.next/" ]; then
-        name=$(echo ${map} | sed -e "s@${proj_root}@@" -e "s@\.next@~\/_next@")
+    if [ -d "./${PROJ_ROOT}/.next/" ]; then
+        name=$(echo ${map} | sed -e "s@${PROJ_ROOT}@@" -e "s@\.next@~\/_next@")
     fi
 
     upload_artifact "$map" "$name"
